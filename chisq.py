@@ -17,20 +17,20 @@ class EclipseFit():
             ecl_files = {'A':'../data/KID7821010/data782.b.tt.trans', 
                          'B':'../data/KID7821010/data782.c.tt.trans'}
             self.ecl_stars = ['A', 'B']
-            rv_files = {'A':'../data/KID7821010/kid007821010RVA.dat', 
-                        'B':'../data/KID7821010/kid007821010RVB.dat'}
+            rv_files = [{'A':'../data/KID7821010/kid007821010RVA.dat', 
+                         'B':'../data/KID7821010/kid007821010RVB.dat'}]
             self.rv_stars = ['A', 'B']
             shift_index = {'A':33, 'B':33}
         elif self.system == '5095':
             ecl_files = {'A':'../data/KID5095269/koi509.tt.dan.db.try7.trans'}
             self.ecl_stars = ['A']
-            #rv_files = {'A':'../data/KID5095269/kid005095269RVA.dat', 
-            #            'B':'../data/KID5095269/kid005095269RVB.dat'}
-            rv_files = {'A':'../data/KID5095269/kid005095269RVA_carmenes.dat', 
-                        'B':'../data/KID5095269/kid005095269RVB_carmenes.dat'}
+            rv_files = [{'A':'../data/KID5095269/kid005095269RVA.dat', 
+                         'B':'../data/KID5095269/kid005095269RVB.dat'},
+                        {'A':'../data/KID5095269/kid005095269RVA_carmenes.dat', 
+                         'B':'../data/KID5095269/kid005095269RVB_carmenes.dat'}]
             self.rv_stars = ['A', 'B']
             shift_index = {'A':41}
-
+        self.num_rv_sources = len(rv_files)
         self.ecl_data = {}
         for i in self.ecl_stars:
             self.ecl_data[i] = pd.read_csv(ecl_files[i], header=None, delim_whitespace=True, 
@@ -38,11 +38,14 @@ class EclipseFit():
             self.ecl_data[i].index = self.ecl_data[i].index.astype(int)
             self.ecl_data[i].index = self.ecl_data[i].index + shift_index[i]
 
-        self.rv_data = {}
-        for i in self.rv_stars:
-            self.rv_data[i] = pd.read_csv(rv_files[i], header=None, delim_whitespace=True, 
-                                          names=['time', 'rv', 'rv_err'])
-            self.rv_data[i]['time'] += 100
+        self.rv_datas = {rv_star:[None for _ in range(self.num_rv_sources)] for rv_star in self.rv_stars}
+        for rv_idx in range(self.num_rv_sources):
+            for i in self.rv_stars:
+                self.rv_datas[i][rv_idx] = pd.read_csv(rv_files[rv_idx][i], header=None, delim_whitespace=True, 
+                                                      names=['time', 'rv', 'rv_err'])
+                self.rv_datas[i][rv_idx]['rv_idx'] = rv_idx
+                self.rv_datas[i][rv_idx]['time'] += 100
+        self.rv_data = {i:pd.concat(self.rv_datas[i], ignore_index=True) for i in self.rv_stars}
 
         self.tFin = max(max(x['data_t'].max() for x in self.ecl_data.values()), self.rv_data['A']['time'].max()) + 100
         self.b = False
@@ -64,8 +67,8 @@ class EclipseFit():
         next_ecl = np.fmod(els[1], els[0])
         N = int(tFin/els[0])
         ecl_model = {i:pd.DataFrame(index=range(N), columns=['model_t', 'model_b'], dtype=float) for i in self.ecl_stars}
-        rv_model = {i:pd.DataFrame(index=self.rv_data[i].index, columns=['time', 'rv'], dtype=float) for i in self.rv_stars}
-        for i in self.rv_stars: rv_model[i]['time'] = self.rv_data[i]['time']
+        rv_model = {i:pd.DataFrame(index=self.rv_data[i].index, columns=['time', 'rv_idx', 'rv'], dtype=float) for i in self.rv_stars}
+        for i in self.rv_stars: rv_model[i][['time', 'rv_idx']] = self.rv_data[i][['time', 'rv_idx']]
         p = sim.particles
         def dotprod(params):
             terms = [(None, None), (None, None)]
@@ -119,13 +122,13 @@ class EclipseFit():
                 ecl_model[ecl_type].loc[ecl_count[ecl_type], 'model_b'] = np.sqrt(ps2())/self.R[ecl_type]
                 ecl_count[ecl_type] += 1
             #rebound.OrbitPlot(sim, slices=True)
-        gamma = els[-1]
+        gamma = els[-2:]
         for i in self.ecl_stars:
             ecl_model[i]['data_t'] = self.ecl_data[i]['data_t']
             ecl_model[i]['res'] = self.ecl_data[i]['data_t'] - ecl_model[i]['model_t']
             ecl_model[i]['data_err'] = self.ecl_data[i]['data_err']
         for i in self.rv_stars:
-            rv_model[i]['rv'] += gamma
+            rv_model[i]['rv'] += gamma[rv_model[i]['rv_idx']]
             rv_model[i]['res'] = self.rv_data[i]['rv'] - rv_model[i]['rv']
         # raise errors if eclipses or RVs not recorded correctly
         for i in self.rv_stars:
@@ -138,7 +141,7 @@ class EclipseFit():
 
     def est_ecl_steps(self, els):
         # We must compute a time of secondary eclipse
-        P1, T01, i1, e1, omega1, P2, Tp2, ecw2, esw2, i2, Omega2, mA, mB, mp, k1, gamma = els
+        P1, T01, i1, e1, omega1, P2, Tp2, ecw2, esw2, i2, Omega2, mA, mB, mp, k1, *gamma = els
         E01 = 2*np.arctan(np.sqrt((1-e1)/(1+e1))*np.tan((np.pi/2 - omega1)/2))
         E02 = 2*np.arctan(np.sqrt((1-e1)/(1+e1))*np.tan((np.pi/2 - omega1 + np.pi)/2))
         M01 = E01 - e1*np.sin(E01)
@@ -148,7 +151,7 @@ class EclipseFit():
         return pri_to_sec_gap, sec_to_pri_gap
    
     def set_up_sim(self, els):
-        P1, T01, i1, e1, omega1, P2, Tp2, ecw2, esw2, i2, Omega2, mA, mB, mp, k1, gamma = els
+        P1, T01, i1, e1, omega1, P2, Tp2, ecw2, esw2, i2, Omega2, mA, mB, mp, k1, *gamma = els
         #i1 = np.pi/2
         e2 = np.sqrt(ecw2**2 + esw2**2)
         omega2 = np.arctan2(esw2, ecw2)
