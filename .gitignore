@@ -1,0 +1,6 @@
+*.npy
+*.png
+*.eps
+__pycache__
+.ipynb_checkpoints
+
