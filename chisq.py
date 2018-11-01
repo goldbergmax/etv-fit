@@ -122,7 +122,7 @@ class EclipseFit():
                 ecl_model[ecl_type].loc[ecl_count[ecl_type], 'model_b'] = np.sqrt(ps2())/self.R[ecl_type]
                 ecl_count[ecl_type] += 1
             #rebound.OrbitPlot(sim, slices=True)
-        gamma = els[-2:]
+        gamma = els[15:]
         for i in self.ecl_stars:
             ecl_model[i]['data_t'] = self.ecl_data[i]['data_t']
             ecl_model[i]['res'] = self.ecl_data[i]['data_t'] - ecl_model[i]['model_t']
