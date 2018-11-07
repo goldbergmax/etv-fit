@@ -5,7 +5,7 @@ from chisq import EclipseFit
 
 system = sys.argv[1]
 
-if not system in ['782', '5095']:
+if not system in ['782', '5095', '3938']:
     raise ValueError('System name "{}" not recognized'.format(system))
 
 seed = {}
@@ -20,10 +20,18 @@ spread['782'] = [1e-6, 1e-5, np.radians(0.0),  4e-4, np.radians(0.03),
 
 seed['5095'] = [18.61088,  66.86235, np.radians(87.0),  0.5,  np.radians(109.148),
                 239.505,  96.256, 0.0375, -0.041176,  np.radians(86.767),  np.radians(0.047),
-                1.0778,  1.0351,  4.4586e-03,  0.0, 4.851, 89.5]
+                1.0778,  1.0351,  4.4586e-03,  0.0, 4.851, 77.5]
 spread['5095'] = [3e-5, 5e-5, np.radians(0.2), 1e-2, np.radians(2),
                   1e-2, 0.2, 1e-3, 1e-3, np.radians(1), np.radians(0.1),
                   1e-1, 1e-1, 2e-4, 0, 0.5, 1]
+
+seed['3938'] = [31.0242673, 60.8408653, np.radians(90),  0.433150, np.radians(-176.02),
+                291.8833, 94.72500, 0.099129, -0.023864, np.radians(151.15), np.radians(25.24),
+                1.23208, 0.7583, 1.0549e-4, 0.22322, -28.2254]
+
+spread['3938'] = [1e-6, 1e-5, np.radians(0.0),  4e-4, np.radians(0.03),
+                  1, 2, 5e-3, 5e-3, np.radians(4), np.radians(4),
+                  3e-3, 3e-3, 4e-5, 2e-3, 0.1]
 
 nwalkers = 100
 ndim = len(seed[system])
@@ -49,5 +57,3 @@ for i, result in enumerate(sampler.sample(p0, iterations=nsteps)):
 
 np.save(system + '_chains_1.npy', sampler.chain)
 np.save(system + '_probs_1.npy', sampler.lnprobability)
-
-print(sampler.acor)

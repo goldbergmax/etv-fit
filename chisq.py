@@ -30,6 +30,14 @@ class EclipseFit():
                          'B':'../data/KID5095269/kid005095269RVB_carmenes.dat'}]
             self.rv_stars = ['A', 'B']
             shift_index = {'A':41}
+        elif self.system == '3938':
+            ecl_files = {'A':'../data/KID3938073/data3938.b.tt.trans',
+                         'B':'../data/KID3938073/data3938.c.tt.trans'}
+            self.ecl_stars = ['A', 'B']
+            rv_files = [{'A':'../data/KID3938073/kid003938073RVA.dat',
+                         'B':'../data/KID3938073/kid003938073RVB.dat'}]
+            self.rv_stars = ['A', 'B']
+            shift_index = {'A':25, 'B':25}
         self.num_rv_sources = len(rv_files)
         self.ecl_data = {}
         for i in self.ecl_stars:
