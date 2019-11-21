@@ -24,6 +24,13 @@ seed['5095'] = [18.61088,  66.86235, np.radians(87.0),  0.5,  np.radians(109.148
 spread['5095'] = [3e-5, 5e-5, np.radians(0.2), 1e-2, np.radians(2),
                   1e-2, 0.2, 1e-3, 1e-3, np.radians(1), np.radians(0.1),
                   1e-1, 1e-1, 2e-4, 0, 0.5, 1]
+# high inclination start
+seed['5095'] = [18.61085, 66.86201, np.radians(85.571), 0.486, np.radians(108.2), 
+                239.49, 95.923, 0.0551*np.cos(np.radians(-46.98)), 0.0551*np.sin(np.radians(-46.98)), np.radians(18.713), np.radians(-103.22),  
+                1.089, 1.037, 4.801/1047.3, 0.0, 4.515, 77.5]
+spread['5095'] = [3e-5, 5e-5, np.radians(0.0), 0.01, np.radians(0.1),
+                  1e-2, 0.1, 1e-4, 1e-4, np.radians(1), np.radians(1),
+                  0.01, 0.01, 1e-4, 0, 0.0, 0.0]
 
 seed['3938'] = [31.0242673, 60.8408653, np.radians(90),  0.433150, np.radians(-176.02),
                 291.8833, 94.72500, 0.099129, -0.023864, np.radians(151.15), np.radians(25.24),
@@ -44,14 +51,21 @@ print('Initial conditions set')
 #    sys.exit(0)
 
 fit = EclipseFit(system)
-sampler = emcee.EnsembleSampler(nwalkers, ndim, fit.evaluate, threads=20)
+def im_cons(im, g1):
+    return np.abs(im - 90) < 30 and (np.abs(g1 - 90) < 30 or np.abs(g1 + 90) < 30)
+sampler = emcee.EnsembleSampler(nwalkers, ndim, fit.evaluate, threads=20, kwargs={'im_constraint':im_cons})
 
 print('Starting MCMC')
 nsteps = int(sys.argv[2])
 for i, result in enumerate(sampler.sample(p0, iterations=nsteps)):
-    if (i + 1) % 100 == 0:
+    if (i + 1) % 10 == 0:
         print('Step {}'.format(i+1))
-        print('Min chisq: {:.2f}'.format((-2*sampler.lnprobability[:, i]).min()))
+        print('Min chisq: {:.2f}'.format((-2*sampler.lnprobability[:, :i]).min()))
+        #best_indx = np.nanargmax(np.where(sampler.lnprobability == 0, 
+        #                                  np.full_like(sampler.lnprobability, np.nan), 
+        #                                  sampler.lnprobability))
+        best_indx = np.unravel_index(sampler.lnprobability[:,:i].argmax(), sampler.lnprobability[:,:i].shape)
+        print(sampler.chain[best_indx])
 
 #pool.close()
 

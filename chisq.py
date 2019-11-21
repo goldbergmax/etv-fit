@@ -3,10 +3,13 @@ from scipy.stats import linregress
 import pandas as pd
 import rebound
 import reboundx
+#from isochrones.mist import MIST_Isochrone
+#from isochrones import StarModel
 
 class EclipseFit():
     def __init__(self, system, dt=None):
         self.system = system
+        #self.mist = MIST_Isochrone()
         self.load_data()
         self.dt = dt
         self.R = {'A':1.2*0.00465, 'B':1.2*0.00465}
@@ -30,6 +33,7 @@ class EclipseFit():
                          'B':'../data/KID5095269/kid005095269RVB_carmenes.dat'}]
             self.rv_stars = ['A', 'B']
             shift_index = {'A':41}
+            self.R = {'A':1.45*0.00465, 'B':1.34*0.00465}
         elif self.system == '3938':
             ecl_files = {'A':'../data/KID3938073/data3938.b.tt.trans',
                          'B':'../data/KID3938073/data3938.c.tt.trans'}
@@ -65,13 +69,12 @@ class EclipseFit():
             self.dbdt_err = {'A':1.6933e-07}
 
     # observer on the positive z-axis
-    def get_residuals(self, els, safe=True, tFin=None):
-        sim = self.set_up_sim(els)
+    def get_residuals(self, els, safe=True, tFin=None, im_constraint=None):
+        sim = self.set_up_sim(els, im_constraint=im_constraint)
         if sim is None:
             return None, None
-        if not tFin or tFin < self.tFin:
+        if not tFin:
             tFin = self.tFin
-        pri_to_sec_gap, sec_to_pri_gap = self.est_ecl_steps(els)
         next_ecl = np.fmod(els[1], els[0])
         N = int(tFin/els[0])
         ecl_model = {i:pd.DataFrame(index=range(N), columns=['model_t', 'model_b'], dtype=float) for i in self.ecl_stars}
@@ -99,6 +102,8 @@ class EclipseFit():
         SPEEDFAC = 1731.45683681 # au/d to km/s
         C = 173.1 # speed of light in au/d
 
+        pri_to_sec_gap, sec_to_pri_gap = self.est_ecl_steps(p[1].P, p[1].e, p[1].omega)
+
         while sim.t < tFin:
             # integrate to next eclipse, or next RV if closer
             while rvcount < len(self.rv_data['A']) and rv_model['A'].loc[rvcount, 'time'] < next_ecl:
@@ -123,6 +128,7 @@ class EclipseFit():
                 ecl_type = 'B'
                 next_ecl = sim.t + sec_to_pri_gap
             #print(sim.t, ecl_type, p['B'].z - p['A'].z)
+            pri_to_sec_gap, sec_to_pri_gap = self.est_ecl_steps(p[1].P, p[1].e, p[1].omega)
             if ecl_type in self.ecl_stars:
                 com_diff = sim.calculate_com().z - sim.calculate_com(last=2).z
                 t_ltte = com_diff/C
@@ -130,7 +136,7 @@ class EclipseFit():
                 ecl_model[ecl_type].loc[ecl_count[ecl_type], 'model_b'] = np.sqrt(ps2())/self.R[ecl_type]
                 ecl_count[ecl_type] += 1
             #rebound.OrbitPlot(sim, slices=True)
-        gamma = els[15:]
+        gamma = np.array(els[15:17])
         for i in self.ecl_stars:
             ecl_model[i]['data_t'] = self.ecl_data[i]['data_t']
             ecl_model[i]['res'] = self.ecl_data[i]['data_t'] - ecl_model[i]['model_t']
@@ -139,34 +145,43 @@ class EclipseFit():
             rv_model[i]['rv'] += gamma[rv_model[i]['rv_idx']]
             rv_model[i]['res'] = self.rv_data[i]['rv'] - rv_model[i]['rv']
         # raise errors if eclipses or RVs not recorded correctly
-        for i in self.rv_stars:
-            if safe and np.any(rv_model[i].isna()):
-                raise IndexError('Some RVs not recorded')
+        #for i in self.rv_stars:
+        #    if safe and np.any(rv_model[i].isna()):
+        #        raise IndexError('Some RVs not recorded')
         for i in self.ecl_stars:
             if safe and np.any(ecl_model[i].dropna(subset=['data_t']).isna()):
                 raise IndexError('Some eclipses not recorded')
         return ecl_model, rv_model
 
-    def est_ecl_steps(self, els):
+    def est_ecl_steps(self, P1, e1, omega1):
         # We must compute a time of secondary eclipse
-        P1, T01, i1, e1, omega1, P2, Tp2, ecw2, esw2, i2, Omega2, mA, mB, mp, k1, *gamma = els
         E01 = 2*np.arctan(np.sqrt((1-e1)/(1+e1))*np.tan((np.pi/2 - omega1)/2))
         E02 = 2*np.arctan(np.sqrt((1-e1)/(1+e1))*np.tan((np.pi/2 - omega1 + np.pi)/2))
         M01 = E01 - e1*np.sin(E01)
         M02 = E02 - e1*np.sin(E02)
-        pri_to_sec_gap = P1/(2*np.pi) * (M02 - M01)
+        pri_to_sec_gap = P1/(2*np.pi) * np.remainder(M02 - M01, 2*np.pi)
         sec_to_pri_gap = P1 - pri_to_sec_gap
         return pri_to_sec_gap, sec_to_pri_gap
    
-    def set_up_sim(self, els):
-        P1, T01, i1, e1, omega1, P2, Tp2, ecw2, esw2, i2, Omega2, mA, mB, mp, k1, *gamma = els
-        #i1 = np.pi/2
+    def set_up_sim(self, els, im_constraint=None):
+        P1, T01, i1, e1, omega1, P2, Tp2, ecw2, esw2, i2, Omega2, mA, mB, mp, k1, *gamma = els[:17]
+        #print(P1, T01, i1, e1, omega1, P2, Tp2, ecw2, esw2, i2, Omega2, mA, mB, mp, k1, gamma)
         e2 = np.sqrt(ecw2**2 + esw2**2)
         omega2 = np.arctan2(esw2, ecw2)
         if e1 < 0 or e1 > 0.8 or e2 > 0.5:
             return None
         if mA < 0 or mB < 0:
             return None
+        if mp < 0 or mp > 5e-2:
+            return None
+        if im_constraint:
+            im = np.arccos(np.cos(i1)*np.cos(i2) + np.sin(i1)*np.sin(i2)*np.cos(Omega2))
+            n1 = np.arcsin(np.sin(i2)*np.sin(Omega2)/np.sin(im))
+            if np.cos(i2) > 0:
+                n1 = np.pi - n1
+            g1 = omega1 - n1
+            if not im_constraint(np.degrees(im), np.degrees(g1)):
+                return None
         E0 = 2*np.arctan(np.sqrt((1-e1)/(1+e1))*np.tan((np.pi/2 - omega1)/2))
         M0 = E0 - e1*np.sin(E0)
         M = M0 - 2*np.pi*T01/P1
@@ -183,7 +198,12 @@ class EclipseFit():
         rebx = reboundx.Extras(sim)
         #gr = rebx.add('gr_full')
         #gr.params['C'] = 173.1
-        rebx.add("tides_precession")
+        #self.R['A'] = self.mist(mA, age, 0.0, return_df=False)['radius']
+        #self.R['B'] = self.mist(mB, age, 0.0, return_df=False)['radius']
+        #if np.isnan(self.R['A']) or np.isnan(self.R['B']):
+        #    return None
+        tides = rebx.load_force("tides_precession")
+        rebx.add_force(tides)
         for i in ['A', 'B']:
             p[i].params["R_tides"] = self.R[i]
             p[i].params["k1"] = k1
@@ -195,12 +215,15 @@ class EclipseFit():
             dbdt[i], b0[i], _, _, _ = linregress(ecl_model[i].dropna()['model_t'], ecl_model[i].dropna()['model_b'])
         return dbdt, b0
 
-    def get_chisq(self, ecl_model, rv_model, ecl=True, rv=True, b=True):
+    def get_chisq(self, ecl_model, rv_model, ecl=True, rv=True, b=True, linearize=False):
         ecl_chisq = {}
         rv_chisq = {}
         b_chisq = {}
         dbdt, b0 = self.impact_regression(ecl_model)
         for i in self.ecl_stars:
+            if linearize:
+                m, c = np.polyfit(ecl_model[i].dropna().index, ecl_model[i].dropna()['res'], deg=1)
+                ecl_model[i]['res'] -= m*ecl_model[i].index + c
             ecl_chisq[i] = ((ecl_model[i]['res']/ecl_model[i]['data_err'])**2).sum()
             if self.b:
                 b_chisq[i] = ((self.b0_data[i] - b0[i])/self.b0_err[i])**2 + ((self.dbdt_data[i] - dbdt[i])/self.dbdt_err[i])**2
@@ -215,11 +238,15 @@ class EclipseFit():
             chisq_sum += sum(b_chisq.values())
         return chisq_sum
 
-    def evaluate(self, els, **kwargs):
-        ecl_model, rv_model = self.get_residuals(els)
+    def evaluate(self, els, ecl=True, rv=True, b=True, linearize=False, im_constraint=None):
+        if not rv:
+            tFin = max(x['data_t'].max() for x in self.ecl_data.values())
+            ecl_model, rv_model = self.get_residuals(els, im_constraint=im_constraint, tFin=tFin)
+        else:
+            ecl_model, rv_model = self.get_residuals(els, im_constraint=im_constraint)
         if ecl_model is None or rv_model is None:
             return -np.inf
-        return -0.5*self.get_chisq(ecl_model, rv_model, **kwargs)
+        return -0.5*self.get_chisq(ecl_model, rv_model, ecl=ecl, rv=rv, b=b, linearize=linearize)
 
 def lsq_fit(ecl_time):
     df = ecl_time.dropna()
