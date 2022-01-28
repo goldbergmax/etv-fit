@@ -3,13 +3,10 @@ from scipy.stats import linregress
 import pandas as pd
 import rebound
 import reboundx
-#from isochrones.mist import MIST_Isochrone
-#from isochrones import StarModel
 
 class EclipseFit():
     def __init__(self, system, dt=None):
         self.system = system
-        #self.mist = MIST_Isochrone()
         self.load_data()
         self.dt = dt
         self.R = {'A':1.2*0.00465, 'B':1.2*0.00465}
@@ -23,7 +20,7 @@ class EclipseFit():
             rv_files = [{'A':'../data/KID7821010/kid007821010RVA.dat', 
                          'B':'../data/KID7821010/kid007821010RVB.dat'}]
             self.rv_stars = ['A', 'B']
-            shift_index = {'A':33, 'B':33}
+            shift_index = {'A':33, 'B':32}
         elif self.system == '5095':
             ecl_files = {'A':'../data/KID5095269/koi509.tt.dan.db.try7.trans'}
             self.ecl_stars = ['A']
@@ -42,6 +39,8 @@ class EclipseFit():
                          'B':'../data/KID3938073/kid003938073RVB.dat'}]
             self.rv_stars = ['A', 'B']
             shift_index = {'A':25, 'B':25}
+        else:
+            raise ValueError('Unknown system')
         self.num_rv_sources = len(rv_files)
         self.ecl_data = {}
         for i in self.ecl_stars:
@@ -73,7 +72,7 @@ class EclipseFit():
         sim = self.set_up_sim(els, im_constraint=im_constraint)
         if sim is None:
             return None, None
-        if not tFin:
+        if not tFin or tFin < self.tFin:
             tFin = self.tFin
         next_ecl = np.fmod(els[1], els[0])
         N = int(tFin/els[0])
@@ -82,14 +81,7 @@ class EclipseFit():
         for i in self.rv_stars: rv_model[i][['time', 'rv_idx']] = self.rv_data[i][['time', 'rv_idx']]
         p = sim.particles
         def dotprod(params):
-            terms = [(None, None), (None, None)]
-            for i, param in enumerate(params):
-                if param == 'x':
-                    terms[i] = p[1].x - p[0].x, p[1].y - p[0].y
-                elif param == 'v':
-                    terms[i] = p[1].vx - p[0].vx, p[1].vy - p[0].vy
-                elif param == 'a':
-                    terms[i] = p[1].ax - p[0].ax, p[1].ay - p[0].ay
+            terms = [[getattr(p[1] - p[0], param.strip('x') + dim) for dim in ['x', 'y']] for param in params]
             return terms[0][0]*terms[1][0] + terms[0][1]*terms[1][1]
 
         def ps2():
@@ -164,8 +156,7 @@ class EclipseFit():
         return pri_to_sec_gap, sec_to_pri_gap
    
     def set_up_sim(self, els, im_constraint=None):
-        P1, T01, i1, e1, omega1, P2, Tp2, ecw2, esw2, i2, Omega2, mA, mB, mp, k1, *gamma = els[:17]
-        #print(P1, T01, i1, e1, omega1, P2, Tp2, ecw2, esw2, i2, Omega2, mA, mB, mp, k1, gamma)
+        P1, T01, i1, e1, omega1, P2, Tp2, ecw2, esw2, i2, Omega2, mA, mB, mp, k2, *gamma = els
         e2 = np.sqrt(ecw2**2 + esw2**2)
         omega2 = np.arctan2(esw2, ecw2)
         if e1 < 0 or e1 > 0.8 or e2 > 0.5:
@@ -198,15 +189,11 @@ class EclipseFit():
         rebx = reboundx.Extras(sim)
         #gr = rebx.add('gr_full')
         #gr.params['C'] = 173.1
-        #self.R['A'] = self.mist(mA, age, 0.0, return_df=False)['radius']
-        #self.R['B'] = self.mist(mB, age, 0.0, return_df=False)['radius']
-        #if np.isnan(self.R['A']) or np.isnan(self.R['B']):
-        #    return None
-        tides = rebx.load_force("tides_precession")
+        tides = rebx.load_force("tides_constant_time_lag")
         rebx.add_force(tides)
         for i in ['A', 'B']:
-            p[i].params["R_tides"] = self.R[i]
-            p[i].params["k1"] = k1
+            p[i].r = self.R[i]
+            p[i].params["tctl_k2"] = k2
         return sim
 
     def impact_regression(self, ecl_model):

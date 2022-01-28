@@ -61,6 +61,7 @@ def get_i2_Omega2(im, g1, i1, omega1):
     Omega2 = np.where(np.sin(omega1 - g1) > 0, Omega2, 2*np.pi - Omega2)
     return i2, Omega2
 
+# see spherical triangle identities, e.g. in Appendix D of Borkovits (2015)
 def im(i1, i2, Omega2):
     return np.arccos(np.cos(i1)*np.cos(i2) + np.sin(i1)*np.sin(i2)*np.cos(Omega2))
 
@@ -98,11 +99,3 @@ def reduced_fit(angles):
     print(result)
     print('\n')
     return result
-
-results = parallel_apply_along_axis(reduced_fit, 0, np.vstack((ims, g1s)))
-
-import pickle
-
-outfile = open('im_g1_fit.data', 'wb')
-pickle.dump(results, outfile)
-outfile.close()

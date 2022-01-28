@@ -101,7 +101,7 @@ class Plotter(EclipseFit):
             stop = self.rv_data['A']['time'].max()
             start -= 5.; stop += 5.
             cont_rvs = self.cont_rv(x, np.linspace(start, stop, 1000))
-        fig, ax = plt.subplots(2, figsize=(16,10), gridspec_kw={'height_ratios':[3,1]},
+        fig, ax = plt.subplots(2, figsize=(12,8), gridspec_kw={'height_ratios':[3,1]},
                                sharex=True)
         colors = {'A':'r', 'B':'k'}
         markers = {0:'o', 1:'^'}
