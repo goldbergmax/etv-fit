@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 from scipy.optimize import minimize
 
 # pylint: disable=invalid-name,locally-disabled
-#plt.style.use('seaborn')
 plt.rc('font', size=16)
 
 G = 2.9591220363E-4

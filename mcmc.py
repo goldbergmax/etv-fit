@@ -45,15 +45,10 @@ ndim = len(seed[system])
 p0 = np.array([sigma*np.random.randn(nwalkers) + mu for mu, sigma in zip(seed[system], spread[system])]).T
 print('Initial conditions set')
 
-#pool = emcee.utils.MPIPool()
-#if not pool.is_master():
-#    pool.wait()
-#    sys.exit(0)
-
 fit = EclipseFit(system)
 def im_cons(im, g1):
     return np.abs(im - 90) < 30 and (np.abs(g1 - 90) < 30 or np.abs(g1 + 90) < 30)
-sampler = emcee.EnsembleSampler(nwalkers, ndim, fit.evaluate, threads=20, kwargs={'im_constraint':im_cons})
+sampler = emcee.EnsembleSampler(nwalkers, ndim, fit.evaluate, threads=20)
 
 print('Starting MCMC')
 nsteps = int(sys.argv[2])
@@ -61,13 +56,10 @@ for i, result in enumerate(sampler.sample(p0, iterations=nsteps)):
     if (i + 1) % 10 == 0:
         print('Step {}'.format(i+1))
         print('Min chisq: {:.2f}'.format((-2*sampler.lnprobability[:, :i]).min()))
-        #best_indx = np.nanargmax(np.where(sampler.lnprobability == 0, 
-        #                                  np.full_like(sampler.lnprobability, np.nan), 
-        #                                  sampler.lnprobability))
         best_indx = np.unravel_index(sampler.lnprobability[:,:i].argmax(), sampler.lnprobability[:,:i].shape)
         print(sampler.chain[best_indx])
 
 #pool.close()
 
-np.save(system + '_chains_1.npy', sampler.chain)
-np.save(system + '_probs_1.npy', sampler.lnprobability)
+np.save(f'mcmc_out/{system}_chains_1.npy', sampler.chain)
+np.save(f'mcmc_out/{system}_probs_1.npy', sampler.lnprobability)

@@ -1,7 +1,6 @@
 *.npy
-*.png
-*.eps
-*.data
+*.sbatch
+figures
 __pycache__
 .ipynb_checkpoints
 
