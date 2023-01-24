@@ -47,10 +47,11 @@ class Plotter(EclipseFit):
         plt.subplots_adjust(hspace=0)
         return ax
         
-    def etv_together(self, x):
-        ecl_model, rv_model = self.get_residuals(x)
+    def etv_together(self, x, ecl_max=None):
+        ecl_model, rv_model = self.get_residuals(x, tFin=ecl_max)
         for i in self.ecl_stars:
-            ecl_max = self.ecl_data[i]['data_t'].max() + 50
+            if not ecl_max:
+                ecl_max = self.ecl_data[i]['data_t'].max() + 50
             ecl_model[i] = ecl_model[i][ecl_model[i]['model_t'] < ecl_max]
         fig, ax = plt.subplots(2, figsize=(12, 8), gridspec_kw={'height_ratios':[3,1]},
                                sharex=True)
