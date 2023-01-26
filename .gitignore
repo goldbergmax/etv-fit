@@ -1,4 +1,5 @@
-*.npy
+mcmc_out/*.npy
+isochrones_out/*.npy
 *.sbatch
 figures
 __pycache__
