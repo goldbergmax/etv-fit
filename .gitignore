@@ -1,7 +1,6 @@
-mcmc_out/*.npy
-isochrones_out/*.npy
+mcmc_out
+isochrones_out
 *.sbatch
 figures
 __pycache__
 .ipynb_checkpoints
-
