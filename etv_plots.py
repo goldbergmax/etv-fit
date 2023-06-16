@@ -7,7 +7,7 @@ class Plotter(EclipseFit):
     def __init__(self, system, **kwargs):
         EclipseFit.__init__(self, system, **kwargs)        
 
-    def etv_residuals(self, x, star='A', phased=False, ecl_max=None, linearize=False):
+    def etv_residuals(self, x, star='A', phased=False, ecl_max=None, linearize=False, lines=False):
         cmap = plt.cm.get_cmap('inferno')
         ecl_model, rv_model = self.get_residuals(x, tFin=ecl_max)
         if not ecl_max:
@@ -28,6 +28,11 @@ class Plotter(EclipseFit):
         ax[0].scatter(self.time_to_phase(ecl_model[star]['model_t'], Tp2, P2, phased),
                       86400*ecl_time_to_etv(ecl_model[star]['model_t'], P, T0),
                       c=ecl_model[star]['model_t'], cmap=cmap, marker='x', s=64)
+        
+        if lines and not phased:
+            ax[0].plot(self.time_to_phase(ecl_model[star]['model_t'], Tp2, P2, phased),
+                       86400*ecl_time_to_etv(ecl_model[star]['model_t'], P, T0),
+                       color='k', lw=1)
 
         ax[0].errorbar(self.time_to_phase(self.ecl_data[star]['data_t'], Tp2, P2, phased),
                        86400*ecl_time_to_etv(self.ecl_data[star]['data_t'], P - lin_P, T0 - lin_T0), 
