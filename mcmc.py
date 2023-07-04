@@ -2,8 +2,15 @@ import sys
 import numpy as np
 import emcee
 from chisq import EclipseFit
+from multiprocessing import Pool
+import argparse
 
-system = sys.argv[1]
+parser = argparse.ArgumentParser()
+parser.add_argument('system', help='System name')
+parser.add_argument('-n', '--nwalkers', type=int, default=100)
+parser.add_argument('-s', '--steps', type=int, default=1000)
+args = parser.parse_args()
+system = args.system
 
 if not system in ['782', '5095', '3938']:
     raise ValueError('System name "{}" not recognized'.format(system))
@@ -40,7 +47,7 @@ spread['3938'] = [1e-6, 1e-5, np.radians(0.0),  4e-4, np.radians(0.03),
                   1, 2, 5e-3, 5e-3, np.radians(4), np.radians(4),
                   3e-3, 3e-3, 4e-5, 2e-3, 0.1]
 
-nwalkers = 100
+nwalkers = args.nwalkers
 ndim = len(seed[system])
 p0 = np.array([sigma*np.random.randn(nwalkers) + mu for mu, sigma in zip(seed[system], spread[system])]).T
 print('Initial conditions set')
@@ -48,18 +55,16 @@ print('Initial conditions set')
 fit = EclipseFit(system)
 def im_cons(im, g1):
     return np.abs(im - 90) < 30 and (np.abs(g1 - 90) < 30 or np.abs(g1 + 90) < 30)
-sampler = emcee.EnsembleSampler(nwalkers, ndim, fit.evaluate, threads=20)
+
+pool = Pool(14)
+sampler = emcee.EnsembleSampler(nwalkers, ndim, fit.evaluate, pool=pool)
 
 print('Starting MCMC')
-nsteps = int(sys.argv[2])
-for i, result in enumerate(sampler.sample(p0, iterations=nsteps)):
-    if (i + 1) % 10 == 0:
-        print('Step {}'.format(i+1))
-        print('Min chisq: {:.2f}'.format((-2*sampler.lnprobability[:, :i]).min()))
-        best_indx = np.unravel_index(sampler.lnprobability[:,:i].argmax(), sampler.lnprobability[:,:i].shape)
-        print(sampler.chain[best_indx])
+nsteps = args.steps
+for sample in sampler.sample(p0, iterations=nsteps, skip_initial_state_check=True):
+    if sampler.iteration % 10 == 0:
+        print(f'Step {sampler.iteration}')
+        print(f'Min chisq: {(-2*sample.log_prob).min():.2f}')
 
-#pool.close()
-
-np.save(f'mcmc_out/{system}_chains_1.npy', sampler.chain)
-np.save(f'mcmc_out/{system}_probs_1.npy', sampler.lnprobability)
+np.save(f'mcmc_out/{system}_chains_2.npy', sampler.chain)
+np.save(f'mcmc_out/{system}_probs_2.npy', sampler.lnprobability)
