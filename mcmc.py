@@ -1,4 +1,4 @@
-import sys
+import os
 import numpy as np
 import emcee
 from chisq import EclipseFit
@@ -87,5 +87,6 @@ for sample in sampler.sample(p0, iterations=nsteps, skip_initial_state_check=Tru
         print(f'Step {sampler.iteration}')
         print(f'Min chisq: {(-2*sample.log_prob).min():.2f}')
 
+os.makedirs('mcmc_out', exist_ok=True)
 np.save(f'mcmc_out/{system}_chains_2.npy', sampler.chain)
 np.save(f'mcmc_out/{system}_probs_2.npy', sampler.lnprobability)
