@@ -30,7 +30,7 @@ class EclipseFit():
                          'B':'../data/KID5095269/kid005095269RVB_carmenes.dat'}]
             self.rv_stars = ['A', 'B']
             shift_index = {'A':41}
-            self.R = {'A':1.45*0.00465, 'B':1.34*0.00465}
+            self.R = {'A':1.49*0.00465, 'B':1.30*0.00465}
         elif self.system == '3938':
             ecl_files = {'A':'../data/KID3938073/data3938.b.tt.trans',
                          'B':'../data/KID3938073/data3938.c.tt.trans'}
@@ -68,8 +68,8 @@ class EclipseFit():
             self.dbdt_err = {'A':1.6933e-07}
 
     # observer on the positive z-axis
-    def get_residuals(self, els, safe=True, tFin=None, im_constraint=None):
-        sim = self.set_up_sim(els, im_constraint=im_constraint)
+    def get_residuals(self, els, safe=True, tFin=None):
+        sim = self.set_up_sim(els)
         if sim is None:
             return None, None
         if not tFin or tFin < self.tFin:
@@ -155,7 +155,7 @@ class EclipseFit():
         sec_to_pri_gap = P1 - pri_to_sec_gap
         return pri_to_sec_gap, sec_to_pri_gap
    
-    def set_up_sim(self, els, im_constraint=None):
+    def set_up_sim(self, els):
         P1, T01, i1, e1, omega1, P2, Tp2, ecw2, esw2, i2, Omega2, mA, mB, mp, k2, *gamma = els
         e2 = np.sqrt(ecw2**2 + esw2**2)
         omega2 = np.arctan2(esw2, ecw2)
@@ -165,14 +165,6 @@ class EclipseFit():
             return None
         if mp < 0 or mp > 5e-2:
             return None
-        if im_constraint:
-            im = np.arccos(np.cos(i1)*np.cos(i2) + np.sin(i1)*np.sin(i2)*np.cos(Omega2))
-            n1 = np.arcsin(np.sin(i2)*np.sin(Omega2)/np.sin(im))
-            if np.cos(i2) > 0:
-                n1 = np.pi - n1
-            g1 = omega1 - n1
-            if not im_constraint(np.degrees(im), np.degrees(g1)):
-                return None
         E0 = 2*np.arctan(np.sqrt((1-e1)/(1+e1))*np.tan((np.pi/2 - omega1)/2))
         M0 = E0 - e1*np.sin(E0)
         M = M0 - 2*np.pi*T01/P1
@@ -225,12 +217,15 @@ class EclipseFit():
             chisq_sum += sum(b_chisq.values())
         return chisq_sum
 
-    def evaluate(self, els, ecl=True, rv=True, b=True, linearize=False, im_constraint=None):
+    def evaluate(self, els, ecl=True, rv=True, b=True, linearize=False, constraints=[]):
+        for constraint in constraints:
+            if not constraint(els):
+                return -np.inf
         if not rv:
             tFin = max(x['data_t'].max() for x in self.ecl_data.values())
-            ecl_model, rv_model = self.get_residuals(els, im_constraint=im_constraint, tFin=tFin)
+            ecl_model, rv_model = self.get_residuals(els, tFin=tFin)
         else:
-            ecl_model, rv_model = self.get_residuals(els, im_constraint=im_constraint)
+            ecl_model, rv_model = self.get_residuals(els)
         if ecl_model is None or rv_model is None:
             return -np.inf
         return -0.5*self.get_chisq(ecl_model, rv_model, ecl=ecl, rv=rv, b=b, linearize=linearize)
