@@ -54,7 +54,7 @@ print('Initial conditions set')
 
 fit = EclipseFit(system)
 
-def im_prior(els):
+def im_prior(self, els):
     P1, T01, i1, e1, omega1, P2, Tp2, ecw2, esw2, i2, Omega2, mA, mB, mp, k2, *gamma = els
     im = np.arccos(np.cos(i1)*np.cos(i2) + np.sin(i1)*np.sin(i2)*np.cos(Omega2))
     n1 = np.arcsin(np.sin(i2)*np.sin(Omega2)/np.sin(im))
@@ -66,14 +66,11 @@ def im_prior(els):
     else:
         return -np.inf
     
-def ecl_5095_prior(els):
+def ecl_5095_prior(self, els):
     P1, T01, i1, e1, omega1, P2, Tp2, ecw2, esw2, i2, Omega2, mA, mB, mp, k2, *gamma = els
-    G = 0.00029591220828559104
-    R_A = 1.49*0.00465
-    R_B = 1.30*0.00465
-    a_bin = (G*(mA + mB)*P1/(4*np.pi**2))**(1/3)
-    prim_ecl_constraint = (R_A + R_B)/a_bin * (1 + e1*np.sin(omega1)/(1 - e1**2)) > np.cos(i1)
-    sec_ecl_constraint =  (R_A + R_B)/a_bin * (1 - e1*np.sin(omega1)/(1 - e1**2)) < np.cos(i1)
+    a_bin = (self.G*(mA + mB)*P1/(4*np.pi**2))**(1/3)
+    prim_ecl_constraint = (self.R['A'] + self.R['B'])/a_bin * (1 + e1*np.sin(omega1)/(1 - e1**2)) > np.cos(i1)
+    sec_ecl_constraint =  (self.R['A'] + self.R['B'])/a_bin * (1 - e1*np.sin(omega1)/(1 - e1**2)) < np.cos(i1)
     if prim_ecl_constraint and sec_ecl_constraint:
         return 0
     else:

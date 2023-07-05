@@ -5,11 +5,12 @@ import rebound
 import reboundx
 
 class EclipseFit():
-    def __init__(self, system, dt=None):
+    def __init__(self, system):
         self.system = system
         self.load_data()
-        self.dt = dt
-        self.R = {'A':1.2*0.00465, 'B':1.2*0.00465}
+        sim = rebound.Simulation()
+        sim.units = ('d', 'AU', 'Msun')
+        self.G = sim.G
 
     def load_data(self):
         # system picker
@@ -171,8 +172,6 @@ class EclipseFit():
         sim = rebound.Simulation()
         sim.integrator = 'ias15'
         sim.units = ('d', 'AU', 'Msun')
-        if self.dt:
-            sim.dt = self.dt
         sim.add(m=mA, hash='A')
         sim.add(m=mB, P=P1, e=e1, omega=omega1, inc=i1, Omega=0.0, M=M, hash='B')
         sim.add(m=mp, P=P2, e=e2, omega=omega2, inc=i2, Omega=Omega2, T=Tp2, hash='b')
@@ -219,7 +218,7 @@ class EclipseFit():
 
     def evaluate(self, els, ecl=True, rv=True, b=True, linearize=False, constraints=[]):
         for constraint in constraints:
-            if not constraint(els):
+            if not constraint(self, els):
                 return -np.inf
         if not rv:
             tFin = max(x['data_t'].max() for x in self.ecl_data.values())
