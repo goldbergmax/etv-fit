@@ -9,6 +9,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('system', help='System name')
 parser.add_argument('-n', '--nwalkers', type=int, default=100)
 parser.add_argument('-s', '--steps', type=int, default=1000)
+parser.add_argument('-t', '--threads', type=int, default=1)
 args = parser.parse_args()
 system = args.system
 
@@ -76,7 +77,7 @@ def ecl_5095_prior(self, els):
     else:
         return -np.inf
 
-pool = Pool(14)
+pool = Pool(args.threads)
 sampler = emcee.EnsembleSampler(nwalkers, ndim, fit.evaluate, pool=pool, kwargs={'constraints': [ecl_5095_prior]})
 
 print('Starting MCMC')
