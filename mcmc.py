@@ -72,10 +72,7 @@ def ecl_5095_prior(self, els):
     a_bin = (self.G*(mA + mB)*P1/(4*np.pi**2))**(1/3)
     prim_ecl_constraint = (self.R['A'] + self.R['B'])/a_bin * (1 + e1*np.sin(omega1)/(1 - e1**2)) > np.cos(i1)
     sec_ecl_constraint =  (self.R['A'] + self.R['B'])/a_bin * (1 - e1*np.sin(omega1)/(1 - e1**2)) < np.cos(i1)
-    if prim_ecl_constraint and sec_ecl_constraint:
-        return 0
-    else:
-        return -np.inf
+    return prim_ecl_constraint and sec_ecl_constraint
 
 pool = Pool(args.threads)
 sampler = emcee.EnsembleSampler(nwalkers, ndim, fit.evaluate, pool=pool, kwargs={'constraints': [ecl_5095_prior]})
