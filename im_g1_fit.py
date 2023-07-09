@@ -1,7 +1,8 @@
 import numpy as np
-from scipy.optimize import minimize, differential_evolution
+from scipy.optimize import differential_evolution
 
 from chisq import EclipseFit
+from cbp_utils import get_i2_Omega2
 
 import multiprocessing
 
@@ -52,26 +53,6 @@ N = 200
 phi = (1 + np.sqrt(5))/2
 ims = np.radians(180) * np.sqrt(np.arange(N) + 1/2)/np.sqrt(N + 1/2)
 g1s = 2*np.pi*np.arange(N)/phi**2
-
-def get_i2_Omega2(im, g1, i1, omega1):
-    n1 = np.where(np.sin(omega1 - g1) > 0, omega1 - g1 + np.pi, np.pi + omega1 - g1)
-    i2 = np.arccos(np.sin(im)*np.sin(i1)*np.cos(n1) + np.cos(im)*np.cos(i1))
-    #i2 = np.where(np.sin(omega1 - g1) > 0, np.pi - i2, i2)
-    Omega2 = np.arccos((np.cos(im) - np.cos(i1)*np.cos(i2))/(np.sin(i1)*np.sin(i2)))
-    Omega2 = np.where(np.sin(omega1 - g1) > 0, Omega2, 2*np.pi - Omega2)
-    return i2, Omega2
-
-# see spherical triangle identities, e.g. in Appendix D of Borkovits (2015)
-def im(i1, i2, Omega2):
-    return np.arccos(np.cos(i1)*np.cos(i2) + np.sin(i1)*np.sin(i2)*np.cos(Omega2))
-
-def n1(i1, i2, Omega2):
-    n1 = np.arccos((np.cos(i2) - np.cos(i1)*np.cos(im(i1, i2, Omega2)))/(np.sin(i1)*np.sin(im(i1, i2, Omega2))))
-    return np.where(np.sin(Omega2) < 0, n1, np.pi - n1)
-
-def g1(i1, i2, Omega2, omega1):
-    g1 = omega1 - n1(i1, i2, Omega2)
-    return np.where(np.sin(Omega2) < 0, g1 + np.pi, g1)
 
 def combine_params(plan_params, x, angles):
     im, g1 = angles
