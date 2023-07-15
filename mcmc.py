@@ -75,7 +75,7 @@ def ecl_5095_prior(self, els):
     return prim_ecl_constraint and sec_ecl_constraint
 
 pool = Pool(args.threads)
-sampler = emcee.EnsembleSampler(nwalkers, ndim, fit.evaluate, pool=pool, moves=emcee.moves.RedBlueMove, kwargs={'constraints': [ecl_5095_prior]})
+sampler = emcee.EnsembleSampler(nwalkers, ndim, fit.evaluate, pool=pool, moves=emcee.moves.RedBlueMove(), kwargs={'constraints': [ecl_5095_prior]})
 
 print('Starting MCMC')
 nsteps = args.steps
