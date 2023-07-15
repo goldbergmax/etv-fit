@@ -29,9 +29,9 @@ spread['782'] = [1e-6, 1e-5, np.radians(0.0),  4e-4, np.radians(0.03),
 seed['5095'] = [18.61083,  66.86175, np.radians(85.0),  0.48,  np.radians(108.7),
                 239.528,  95.537, 0.0376, -0.0401,  np.radians(86.698),  np.radians(-0.698),
                 1.104,  1.053,  4.7e-03,  0.0, 4.5, 77.6]
-spread['5095'] = [3e-5, 5e-5, np.radians(0.2), 1e-2, np.radians(2),
-                  1e-2, 0.2, 1e-3, 1e-3, np.radians(1), np.radians(0.1),
-                  1e-1, 1e-1, 2e-4, 0, 0.5, 1]
+spread['5095'] = [3e-6, 3e-5, np.radians(0.1), 1e-3, np.radians(0.1),
+                  1e-3, 0.1, 1e-4, 1e-4, np.radians(0.1), np.radians(0.1),
+                  1e-2, 1e-2, 2e-5, 0, 0.05, 0.1]
 # high inclination start
 # seed['5095'] = [18.61085, 66.86201, np.radians(85.571), 0.486, np.radians(108.2), 
 #                 239.49, 95.923, 0.0551*np.cos(np.radians(-46.98)), 0.0551*np.sin(np.radians(-46.98)), np.radians(18.713), np.radians(-103.22),  
@@ -75,7 +75,7 @@ def ecl_5095_prior(self, els):
     return prim_ecl_constraint and sec_ecl_constraint
 
 pool = Pool(args.threads)
-sampler = emcee.EnsembleSampler(nwalkers, ndim, fit.evaluate, pool=pool, kwargs={'constraints': [ecl_5095_prior]})
+sampler = emcee.EnsembleSampler(nwalkers, ndim, fit.evaluate, pool=pool, moves=emcee.moves.RedBlueMove, kwargs={'constraints': [ecl_5095_prior]})
 
 print('Starting MCMC')
 nsteps = args.steps
