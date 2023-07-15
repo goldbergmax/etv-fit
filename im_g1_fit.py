@@ -49,10 +49,11 @@ x = np.array([18.6108787, 66.8618618, np.radians(84.74685), 0.5022,  np.radians(
               239.52291307, 95.60531312, 0.03818475, -0.03991164, np.radians(88.01798),  np.radians(-0.701487),
               1.17172799, 1.1162874, 0.00479031,  0.0, 4.66971364, 78.00734822])
 
-N = 200
-phi = (1 + np.sqrt(5))/2
-ims = np.radians(180) * np.sqrt(np.arange(N) + 1/2)/np.sqrt(N + 1/2)
-g1s = 2*np.pi*np.arange(N)/phi**2
+def make_angles(N):
+    phi = (1 + np.sqrt(5))/2
+    ims = np.radians(180) * np.sqrt(np.arange(N) + 1/2)/np.sqrt(N + 1/2)
+    g1s = 2*np.pi*np.arange(N)/phi**2
+    return ims, g1s
 
 def combine_params(plan_params, x, angles):
     im, g1 = angles
@@ -74,7 +75,7 @@ def planet_chisq(plan_params, x, angles):
 
 def reduced_fit(angles):
     result = differential_evolution(planet_chisq, 
-                      args=(x, angles), popsize=5, workers=8,
+                      args=(x, angles), popsize=5, workers=1,
                       bounds=[(220, 260), (0, 250), (-0.2, 0.2), (-0.2, 0.2), (0., 20/1000.)])
     result['angles'] = angles
     print(result)
